@@ -4,6 +4,6 @@
 
 ## Child modules
 
-- [ ] `aws-eks` - Amazon Elastic Kubernetes Service (EKS)
+- [x] `aws-eks` - Amazon Elastic Kubernetes Service (EKS) - [Read More](/modules/aws-eks/README.md)
 - [ ] `gcp-gke` - Google Kubernetes Engine (GKE)
 - [ ] `azr-aks` - Azure Kubernetes Service (AKS)
