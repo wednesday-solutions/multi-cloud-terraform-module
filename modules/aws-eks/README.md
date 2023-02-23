@@ -23,9 +23,8 @@
   - `region` - Region
   - `aws_access_key_id` = AWS Access Key ID\*
   - `aws_access_secret_key` = AWS Access Secret Key\*
-  - `aws_profile` = (Optional) AWs Profile
 
-  `*` Sensitive variables. Please use `terraform.vars` file
+  `*` Sensitive variables. Please use `terraform.tfvars` file, you can see in [example](#example)
 
 - **Outputs**
 
@@ -51,7 +50,6 @@ cp terraform.tfvars.sample terraform.tfvars
 
   - `aws_access_key_id` = AWS Access Key ID
   - `aws_access_secret_key` = AWS Access Secret Key
-  - `aws_profile` = (Optional) AWs Profile
 
 - Install required terraform providers
 
