@@ -12,8 +12,6 @@
 - AWS account
 - CLI tools
   - `terraform`
-  - `aws`
-  - `kubectl`
 
 ## Module structure
 
@@ -66,6 +64,7 @@ terraform apply
 ## Providers
 
 - `terraform-aws-provider` - hashicorp/aws v4
+- `terraform-kubernetes-provider` - hashicorp/kubernetes v2
 
 #### Resources
 
@@ -73,8 +72,11 @@ terraform apply
 - `aws_iam_role` - Create IAM role for EKS cluster and Fargate profile
 - `aws_iam_role_policy_attachment` - Attach policy to IAM role
 - `aws_eks_cluster` - Create EKS cluster
+- `aws_eks_addon` - Addons for cluster
 - `aws_eks_fargate_profile` - Create Fargate profile
+- `kubernetes_annotations` - Patch annotations of kubernetes objects
 
 #### DataSources
 
-- `aws_aws_caller_identity` - Access AWS account ID
+- `aws_eks_cluster_auth` - Access EKS cluster auth token
+- `aws_subnets` - Access subnets of VPC with tag filter

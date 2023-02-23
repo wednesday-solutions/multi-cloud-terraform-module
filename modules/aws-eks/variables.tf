@@ -10,21 +10,22 @@ variable "aws_access_secret_key" {
   sensitive   = true
 }
 
-variable "aws_profile" {
-  type        = string
-  description = "AWS profile"
-  default     = "default"
-}
-
 variable "application_name" {
   type        = string
   description = "Name of application"
 }
 
+# TODO:// regions for multi region deployment
 variable "region" {
   type        = string
   description = "AWS region"
   default     = "ap-south-1"
+}
+
+variable "cluster_addons" {
+  type        = list(string)
+  description = "EKS cluster addons"
+  default     = ["vpc-cni", "kube-proxy", "coredns"]
 }
 
 

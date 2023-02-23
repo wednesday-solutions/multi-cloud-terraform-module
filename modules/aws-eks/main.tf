@@ -4,9 +4,6 @@ provider "aws" {
   region     = var.region
 }
 
-data "aws_caller_identity" "current" {}
-
-
 # Cloudformation Stack for Cluster VPC and Subnets
 
 resource "aws_cloudformation_stack" "eks_vpc_stack" {
@@ -18,7 +15,7 @@ resource "aws_cloudformation_stack" "eks_vpc_stack" {
 # EKS Cluster IAM Role
 
 resource "aws_iam_role" "cluster_role" {
-  name = "AmazonEKSClusterRole"
+  name = "${var.application_name}-AmazonEKSClusterRole"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -36,9 +33,6 @@ resource "aws_iam_role" "cluster_role" {
 resource "aws_iam_role_policy_attachment" "cluster_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
   role       = aws_iam_role.cluster_role.name
-  depends_on = [
-    aws_iam_role.cluster_role
-  ]
 }
 
 # EKS Cluster
@@ -46,20 +40,23 @@ resource "aws_iam_role_policy_attachment" "cluster_role_policy" {
 resource "aws_eks_cluster" "cluster" {
   name     = "${var.application_name}-cluster"
   role_arn = aws_iam_role.cluster_role.arn
-
   vpc_config {
     subnet_ids = split(",", aws_cloudformation_stack.eks_vpc_stack.outputs["SubnetIds"])
   }
+}
 
-  depends_on = [
-    aws_cloudformation_stack.eks_vpc_stack
-  ]
+# EKS Cluster Addons
+
+resource "aws_eks_addon" "cluster" {
+  for_each     = toset(var.cluster_addons)
+  cluster_name = aws_eks_cluster.cluster.name
+  addon_name   = each.key
 }
 
 # Fargate Pod Execution Role
 
 resource "aws_iam_role" "fargate_role" {
-  name = "AmazonEKSPodExecutionRole"
+  name = "${var.application_name}-AmazonEKSPodExecutionRole"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -67,7 +64,7 @@ resource "aws_iam_role" "fargate_role" {
         Effect = "Allow"
         Condition = {
           ArnLike = {
-            "aws:SourceArn" = "arn:aws:eks:${var.region}:${data.aws_caller_identity.current.account_id}:fargateprofile/${aws_eks_cluster.cluster.name}/*"
+            "aws:SourceArn" = "${replace(aws_eks_cluster.cluster.arn, ":cluster/", ":fargateprofile/")}/*"
           }
         }
         Principal = {
@@ -82,13 +79,9 @@ resource "aws_iam_role" "fargate_role" {
 resource "aws_iam_role_policy_attachment" "fargate_role" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
   role       = aws_iam_role.fargate_role.name
-
-  depends_on = [
-    aws_iam_role.fargate_role
-  ]
 }
 
-# VPC private  subnets
+# VPC private subnets
 
 data "aws_subnets" "private" {
   filter {
@@ -113,13 +106,9 @@ resource "aws_eks_fargate_profile" "fp-default" {
   selector {
     namespace = "default"
   }
-
-  depends_on = [
-    aws_eks_cluster.cluster
-  ]
 }
 
-resource "aws_eks_fargate_profile" "core_dns" {
+resource "aws_eks_fargate_profile" "coredns" {
   fargate_profile_name   = "CoreDNS"
   cluster_name           = aws_eks_cluster.cluster.name
   subnet_ids             = toset(data.aws_subnets.private.ids)
@@ -130,21 +119,34 @@ resource "aws_eks_fargate_profile" "core_dns" {
       "k8s-app" = "kube-dns"
     }
   }
-  depends_on = [
-    aws_eks_cluster.cluster
-  ]
 }
 
-# TODO:// should we keep this in terraform or not
-resource "null_resource" "fargate_coredns_pods" {
-  provisioner "local-exec" {
-    when    = create
-    command = "${path.module}/scripts/patch-coredns-compute-type.sh"
-    environment = {
-      CLUSTER_NAME = aws_eks_fargate_profile.core_dns.cluster_name
-      REGION       = var.region
-    }
+# Connect to created EKS cluster
+
+data "aws_eks_cluster_auth" "cluster" {
+  name = aws_eks_cluster.cluster.name
+}
+
+provider "kubernetes" {
+  host                   = aws_eks_cluster.cluster.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.cluster.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+}
+
+# Update pod annotation of coredns deployment to enable fargate nodes
+
+resource "kubernetes_annotations" "coredns_pods_annotation" {
+  api_version = "apps/v1"
+  kind        = "Deployment"
+  depends_on = [
+    aws_eks_fargate_profile.coredns
+  ]
+  metadata {
+    name      = "coredns"
+    namespace = "kube-system"
+  }
+  template_annotations = {
+    "eks.amazonaws.com/compute-type" = null
   }
 }
-
 
