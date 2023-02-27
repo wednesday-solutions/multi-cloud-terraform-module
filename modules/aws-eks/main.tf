@@ -11,7 +11,6 @@ resource "aws_cloudformation_stack" "eks_vpc_stack" {
   template_url = "https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-vpc-private-subnets.yaml"
 }
 
-
 # EKS Cluster IAM Role
 
 resource "aws_iam_role" "cluster_role" {
@@ -43,14 +42,10 @@ resource "aws_eks_cluster" "cluster" {
   vpc_config {
     subnet_ids = split(",", aws_cloudformation_stack.eks_vpc_stack.outputs["SubnetIds"])
   }
-}
 
-# EKS Cluster Addons
-
-resource "aws_eks_addon" "cluster" {
-  for_each     = toset(var.cluster_addons)
-  cluster_name = aws_eks_cluster.cluster.name
-  addon_name   = each.key
+  depends_on = [
+    aws_iam_role_policy_attachment.cluster_role_policy
+  ]
 }
 
 # Fargate Pod Execution Role
@@ -76,7 +71,7 @@ resource "aws_iam_role" "fargate_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "fargate_role" {
+resource "aws_iam_role_policy_attachment" "fargate_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
   role       = aws_iam_role.fargate_role.name
 }
@@ -97,17 +92,6 @@ data "aws_subnets" "private" {
 
 # Fargate Profiles
 
-resource "aws_eks_fargate_profile" "fp-default" {
-  fargate_profile_name   = "fp-default"
-  cluster_name           = aws_eks_cluster.cluster.name
-  subnet_ids             = toset(data.aws_subnets.private.ids)
-  pod_execution_role_arn = aws_iam_role.fargate_role.arn
-
-  selector {
-    namespace = "default"
-  }
-}
-
 resource "aws_eks_fargate_profile" "coredns" {
   fargate_profile_name   = "CoreDNS"
   cluster_name           = aws_eks_cluster.cluster.name
@@ -119,6 +103,25 @@ resource "aws_eks_fargate_profile" "coredns" {
       "k8s-app" = "kube-dns"
     }
   }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.fargate_role_policy
+  ]
+}
+
+resource "aws_eks_fargate_profile" "fp-default" {
+  fargate_profile_name   = "fp-default"
+  cluster_name           = aws_eks_cluster.cluster.name
+  subnet_ids             = toset(data.aws_subnets.private.ids)
+  pod_execution_role_arn = aws_iam_role.fargate_role.arn
+
+  selector {
+    namespace = "default"
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.fargate_role_policy
+  ]
 }
 
 # Connect to created EKS cluster
@@ -145,8 +148,22 @@ resource "kubernetes_annotations" "coredns_pods_annotation" {
     name      = "coredns"
     namespace = "kube-system"
   }
+  force = true
   template_annotations = {
-    "eks.amazonaws.com/compute-type" = null
+    "eks.amazonaws.com/compute-type" = "fargate"
   }
 }
 
+# EKS Cluster Addons
+
+resource "aws_eks_addon" "addons" {
+  for_each     = var.cluster_addons
+  cluster_name = aws_eks_cluster.cluster.name
+  addon_name   = each.key
+  timeouts {
+    create = each.value
+  }
+  depends_on = [
+    kubernetes_annotations.coredns_pods_annotation
+  ]
+}

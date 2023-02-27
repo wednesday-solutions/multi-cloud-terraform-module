@@ -3,6 +3,10 @@ output "cluster_name" {
 }
 
 output "cluster_arn" {
+  value = aws_eks_cluster.cluster.endpoint
+}
+
+output "cluster_arn" {
   value = aws_eks_cluster.cluster.arn
 }
 

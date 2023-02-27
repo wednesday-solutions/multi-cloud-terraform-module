@@ -17,17 +17,19 @@
 
 - **Variables**
 
-  - `application_name` - Application name
-  - `region` - Region
-  - `aws_access_key_id` = AWS Access Key ID\*
-  - `aws_access_secret_key` = AWS Access Secret Key\*
+  - `application_name` - (Required) Application name
+  - `region` - (Required) Region
+  - `aws_access_key_id` - (Required)(Sensitive) AWS Access Key ID\*
+  - `aws_access_secret_key` - (Required)(Sensitive) AWS Access Secret Key\*
+  - `cluster_addons` - (Optional) EKS cluster addons
 
-  `*` Sensitive variables. Please use `terraform.tfvars` file, you can see in [example](#example)
+  For sensitive variables, please use `terraform.tfvars` file. You can see in [example](#example)
 
 - **Outputs**
 
   - `cluster_name` - EKS cluster name
   - `cluster_arn` - EKS cluster ARN
+  - `cluster_endpoint` - EKS cluster endpoint
   - `cluster_region` - Region where EKS cluster is deployed
 
 ## Example

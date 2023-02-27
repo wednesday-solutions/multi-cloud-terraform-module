@@ -19,13 +19,12 @@ variable "application_name" {
 variable "region" {
   type        = string
   description = "AWS region"
-  default     = "ap-south-1"
 }
 
 variable "cluster_addons" {
-  type        = list(string)
+  type        = map(string)
   description = "EKS cluster addons"
-  default     = ["vpc-cni", "kube-proxy", "coredns"]
+  default     = { "vpc-cni" = "5m", "kube-proxy" = "5m", "coredns" = "30m" }
 }
 
 
