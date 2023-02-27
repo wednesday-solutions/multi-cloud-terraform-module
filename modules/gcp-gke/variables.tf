@@ -9,7 +9,7 @@ variable "region" {
   description = "GKE cluster region"
 }
 
-variable "application_name" {
+variable "cluster_name" {
   type        = string
-  description = "Application name"
+  description = "Cluster name"
 }

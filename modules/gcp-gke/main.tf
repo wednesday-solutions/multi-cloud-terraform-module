@@ -5,7 +5,7 @@ provider "google" {
 }
 
 resource "google_container_cluster" "cluster" {
-  name     = "${var.application_name}-cluster"
+  name     = var.cluster_name
   location = var.region
 
   ip_allocation_policy {
