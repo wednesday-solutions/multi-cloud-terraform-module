@@ -21,11 +21,8 @@ variable "region" {
   description = "AWS region"
 }
 
-variable "cluster_addons" {
-  type        = map(string)
-  description = "EKS cluster addons"
-  default     = { "vpc-cni" = "5m", "kube-proxy" = "5m", "coredns" = "30m" }
+variable "enable_aws_load_balancer_controller_addon" {
+  type        = bool
+  default     = true
+  description = "Enable AWS load balancer controller addon for current cluster"
 }
-
-
-

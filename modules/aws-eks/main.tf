@@ -4,6 +4,10 @@ provider "aws" {
   region     = var.region
 }
 
+locals {
+  cluster_addons = { "vpc-cni" = "5m", "kube-proxy" = "5m", "coredns" = "30m" }
+}
+
 # Cloudformation Stack for Cluster VPC and Subnets
 
 resource "aws_cloudformation_stack" "eks_vpc_stack" {
@@ -99,9 +103,6 @@ resource "aws_eks_fargate_profile" "coredns" {
   pod_execution_role_arn = aws_iam_role.fargate_role.arn
   selector {
     namespace = "kube-system"
-    labels = {
-      "k8s-app" = "kube-dns"
-    }
   }
 
   depends_on = [
@@ -157,7 +158,7 @@ resource "kubernetes_annotations" "coredns_pods_annotation" {
 # EKS Cluster Addons
 
 resource "aws_eks_addon" "addons" {
-  for_each     = var.cluster_addons
+  for_each     = local.cluster_addons
   cluster_name = aws_eks_cluster.cluster.name
   addon_name   = each.key
   timeouts {
@@ -165,5 +166,34 @@ resource "aws_eks_addon" "addons" {
   }
   depends_on = [
     kubernetes_annotations.coredns_pods_annotation
+  ]
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = aws_eks_cluster.cluster.endpoint
+    cluster_ca_certificate = base64decode(aws_eks_cluster.cluster.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.cluster.token
+  }
+}
+
+module "aws_load_balancer_controller" {
+  count = var.enable_aws_load_balancer_controller_addon ? 1 : 0
+
+  source = "./eks-lbc-addon"
+
+  application_name = var.application_name
+  region           = var.region
+
+  cluster_endpoint       = aws_eks_cluster.cluster.endpoint
+  cluster_ca_certificate = aws_eks_cluster.cluster.certificate_authority[0].data
+  cluster_token          = data.aws_eks_cluster_auth.cluster.token
+
+  cluster_name        = aws_eks_cluster.cluster.name
+  cluster_oidc_issuer = aws_eks_cluster.cluster.identity[0].oidc[0].issuer
+  vpc_id              = aws_cloudformation_stack.eks_vpc_stack.outputs["VpcId"]
+
+  depends_on = [
+    aws_eks_addon.addons
   ]
 }
