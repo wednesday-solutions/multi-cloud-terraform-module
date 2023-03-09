@@ -13,3 +13,7 @@ output "cluster_arn" {
 output "cluster_region" {
   value = var.region
 }
+
+output "vpc_id" {
+  value = aws_cloudformation_stack.eks_vpc_stack.outputs["VpcId"]
+}

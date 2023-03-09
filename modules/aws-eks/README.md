@@ -19,9 +19,9 @@
 
   - `application_name` - (Required) Application name
   - `region` - (Required) Region
-  - `aws_access_key_id` - (Required)(Sensitive) AWS Access Key ID\*
-  - `aws_access_secret_key` - (Required)(Sensitive) AWS Access Secret Key\*
-  - `cluster_addons` - (Optional) EKS cluster addons
+  - `aws_access_key_id` - (Required)(Sensitive) AWS Access Key ID
+  - `aws_access_secret_key` - (Required)(Sensitive) AWS Access Secret Key
+  - `enable_aws_load_balancer_controller_addon` - (Optional) Enable AWS load balancer controller addon (default `true`)
 
   For sensitive variables, please use `terraform.tfvars` file. You can see in [example](#example)
 
@@ -31,6 +31,7 @@
   - `cluster_arn` - EKS cluster ARN
   - `cluster_endpoint` - EKS cluster endpoint
   - `cluster_region` - Region where EKS cluster is deployed
+  - `vpc_id` - EKS Cluster VPC ID
 
 ## Example
 
@@ -67,6 +68,7 @@ terraform apply
 
 - `terraform-aws-provider` - hashicorp/aws v4
 - `terraform-kubernetes-provider` - hashicorp/kubernetes v2
+- `terraform-helm-provider` - hashicorp/helm v2.9
 
 #### Resources
 
