@@ -23,7 +23,6 @@ variable "vpc_id" {
   description = "Cluster VPC ID"
 }
 
-
 variable "cluster_endpoint" {
   type        = string
   description = "EKS cluster endpoint"
