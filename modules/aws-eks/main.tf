@@ -1,9 +1,3 @@
-provider "aws" {
-  access_key = var.aws_access_key_id
-  secret_key = var.aws_access_secret_key
-  region     = var.region
-}
-
 locals {
   cluster_addons = { "vpc-cni" = "5m", "kube-proxy" = "5m", "coredns" = "30m" }
 }
@@ -180,7 +174,7 @@ provider "helm" {
 module "aws_load_balancer_controller" {
   count = var.enable_aws_load_balancer_controller_addon ? 1 : 0
 
-  source = "./eks-lbc-addon"
+  source = "../eks-lbc-addon"
 
   application_name = var.application_name
   region           = var.region
