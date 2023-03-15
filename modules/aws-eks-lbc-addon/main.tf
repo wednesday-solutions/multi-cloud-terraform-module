@@ -54,7 +54,7 @@ resource "aws_iam_role" "aws_load_balancer_controller" {
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role_policy_attachment" "lb_controller_iam_policy" {
-  policy_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/AWSLoadBalancerControllerIAMPolicy"
+  policy_arn = aws_iam_policy.aws_load_balancer_controller.arn
   role       = aws_iam_role.aws_load_balancer_controller.name
 }
 

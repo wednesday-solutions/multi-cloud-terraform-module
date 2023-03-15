@@ -15,5 +15,5 @@ output "cluster_region" {
 }
 
 output "vpc_id" {
-  value = aws_cloudformation_stack.eks_vpc_stack.outputs["VpcId"]
+  value = aws_vpc.default.id
 }

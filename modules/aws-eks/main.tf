@@ -1,12 +1,156 @@
 locals {
   cluster_addons = { "vpc-cni" = "5m", "kube-proxy" = "5m", "coredns" = "30m" }
+  private_subnet_tags = {
+    "kubernetes.io/role/internal-elb" = 1
+    Private                           = true
+  }
+  public_subnet_tags = {
+    "kubernetes.io/role/elb" = 1
+    Public                   = true
+  }
 }
 
-# Cloudformation Stack for Cluster VPC and Subnets
+resource "aws_vpc" "default" {
+  cidr_block           = var.vpc_cidr_block
+  enable_dns_hostnames = true
+  enable_dns_support   = true
 
-resource "aws_cloudformation_stack" "eks_vpc_stack" {
-  name         = "${var.application_name}-eks-cf-stack"
-  template_url = "https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-vpc-private-subnets.yaml"
+  tags = {
+    Name = "${var.application_name}/VPC"
+  }
+}
+
+resource "aws_internet_gateway" "default" {
+  tags = {
+    Name = "${var.application_name}/InternetGateway"
+  }
+}
+
+resource "aws_internet_gateway_attachment" "vpc_default" {
+  vpc_id              = aws_vpc.default.id
+  internet_gateway_id = aws_internet_gateway.default.id
+}
+
+# Private subnet
+
+resource "aws_subnet" "private" {
+  count = length(var.private_subnets)
+
+  vpc_id = aws_vpc.default.id
+
+  availability_zone       = var.private_subnets[count.index].availability_zone
+  cidr_block              = var.private_subnets[count.index].cidr_block
+  map_public_ip_on_launch = false
+
+  tags = merge({
+    "Name" = "${var.application_name}/Subnet${var.private_subnets[count.index].name}"
+    },
+    local.private_subnet_tags
+  )
+}
+
+# Public subnet
+
+resource "aws_subnet" "public" {
+  count = length(var.public_subnets)
+
+  vpc_id = aws_vpc.default.id
+
+  availability_zone       = var.public_subnets[count.index].availability_zone
+  cidr_block              = var.public_subnets[count.index].cidr_block
+  map_public_ip_on_launch = true
+
+  tags = merge({
+    "Name" = "${var.application_name}/Subnet${var.public_subnets[count.index].name}"
+    },
+    local.public_subnet_tags
+  )
+}
+
+# Private Network
+
+resource "aws_route_table" "private" {
+  count = length(var.private_subnets)
+
+  vpc_id = aws_vpc.default.id
+
+  tags = {
+    Name = "${var.application_name}/PrivateRouteTable${var.private_subnets[count.index].name}"
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  count = length(var.private_subnets)
+
+  route_table_id = aws_route_table.private[count.index].id
+  subnet_id      = aws_subnet.private[count.index].id
+}
+
+# Public Network
+
+resource "aws_route_table" "public" {
+
+  vpc_id = aws_vpc.default.id
+  tags = {
+    Name = "${var.application_name}/PublicRouteTable"
+  }
+}
+
+resource "aws_route" "public" {
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.default.id
+  route_table_id         = aws_route_table.public.id
+
+  depends_on = [
+    aws_internet_gateway_attachment.vpc_default
+  ]
+}
+
+resource "aws_route_table_association" "public" {
+  count = length(aws_subnet.public)
+
+  route_table_id = aws_route_table.public.id
+  subnet_id      = aws_subnet.public[count.index].id
+}
+
+# NAT
+
+resource "aws_eip" "nat_ip" {
+  vpc = true
+  tags = {
+    Name = "${var.application_name}/NATIP"
+  }
+  depends_on = [
+    aws_internet_gateway_attachment.vpc_default
+  ]
+}
+
+resource "aws_nat_gateway" "default" {
+  allocation_id = aws_eip.nat_ip.allocation_id
+  subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name = "${var.application_name}/NATGateway"
+  }
+}
+
+resource "aws_route" "nat_private" {
+  count = length(aws_route_table.private)
+
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.default.id
+  route_table_id         = aws_route_table.private[count.index].id
+}
+
+
+# Security Groups
+
+resource "aws_security_group" "control_plane_sg" {
+  vpc_id      = aws_vpc.default.id
+  description = "Communication between the control plane and worker nodegroups"
+  tags = {
+    Name = "${var.application_name}/ControlPlaneSecurityGroup"
+  }
 }
 
 # EKS Cluster IAM Role
@@ -38,7 +182,14 @@ resource "aws_eks_cluster" "cluster" {
   name     = "${var.application_name}-cluster"
   role_arn = aws_iam_role.cluster_role.arn
   vpc_config {
-    subnet_ids = split(",", aws_cloudformation_stack.eks_vpc_stack.outputs["SubnetIds"])
+    endpoint_private_access = false
+    endpoint_public_access  = true
+    security_group_ids      = [aws_security_group.control_plane_sg.id]
+    subnet_ids              = concat(aws_subnet.public[*].id, aws_subnet.private[*].id)
+  }
+
+  tags = {
+    Name = "${var.application_name}/ControlPlane"
   }
 
   depends_on = [
@@ -74,44 +225,19 @@ resource "aws_iam_role_policy_attachment" "fargate_role_policy" {
   role       = aws_iam_role.fargate_role.name
 }
 
-# VPC private subnets
-
-data "aws_subnets" "private" {
-  filter {
-    name   = "vpc-id"
-    values = [aws_cloudformation_stack.eks_vpc_stack.outputs["VpcId"]]
-  }
-
-  # Cloudformation create private subnets with the following tags
-  tags = {
-    "kubernetes.io/role/internal-elb" = 1
-  }
-}
-
 # Fargate Profiles
 
-resource "aws_eks_fargate_profile" "coredns" {
-  fargate_profile_name   = "CoreDNS"
-  cluster_name           = aws_eks_cluster.cluster.name
-  subnet_ids             = toset(data.aws_subnets.private.ids)
-  pod_execution_role_arn = aws_iam_role.fargate_role.arn
-  selector {
-    namespace = "kube-system"
-  }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.fargate_role_policy
-  ]
-}
-
-resource "aws_eks_fargate_profile" "fp-default" {
+resource "aws_eks_fargate_profile" "fp_default" {
   fargate_profile_name   = "fp-default"
   cluster_name           = aws_eks_cluster.cluster.name
-  subnet_ids             = toset(data.aws_subnets.private.ids)
+  subnet_ids             = aws_subnet.private[*].id
   pod_execution_role_arn = aws_iam_role.fargate_role.arn
 
   selector {
     namespace = "default"
+  }
+  selector {
+    namespace = "kube-system"
   }
 
   depends_on = [
@@ -137,7 +263,7 @@ resource "kubernetes_annotations" "coredns_pods_annotation" {
   api_version = "apps/v1"
   kind        = "Deployment"
   depends_on = [
-    aws_eks_fargate_profile.coredns
+    aws_eks_fargate_profile.fp_default
   ]
   metadata {
     name      = "coredns"
@@ -174,7 +300,7 @@ provider "helm" {
 module "aws_load_balancer_controller" {
   count = var.enable_aws_load_balancer_controller_addon ? 1 : 0
 
-  source = "../eks-lbc-addon"
+  source = "../aws-eks-lbc-addon"
 
   application_name = var.application_name
   region           = var.region
@@ -185,7 +311,7 @@ module "aws_load_balancer_controller" {
 
   cluster_name        = aws_eks_cluster.cluster.name
   cluster_oidc_issuer = aws_eks_cluster.cluster.identity[0].oidc[0].issuer
-  vpc_id              = aws_cloudformation_stack.eks_vpc_stack.outputs["VpcId"]
+  vpc_id              = aws_vpc.default.id
 
   depends_on = [
     aws_eks_addon.addons
