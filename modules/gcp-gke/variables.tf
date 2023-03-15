@@ -9,7 +9,13 @@ variable "region" {
   description = "GKE cluster region"
 }
 
-variable "cluster_name" {
+variable "application_name" {
   type        = string
-  description = "Cluster name"
+  description = "Application name"
+}
+
+
+variable "subnet_cidr_range" {
+  type        = string
+  description = "IP CIDR range for subnetwork"
 }
