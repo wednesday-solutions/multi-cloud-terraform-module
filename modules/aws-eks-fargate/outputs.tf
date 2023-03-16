@@ -13,7 +13,3 @@ output "cluster_arn" {
 output "cluster_region" {
   value = var.region
 }
-
-output "vpc_id" {
-  value = aws_vpc.default.id
-}

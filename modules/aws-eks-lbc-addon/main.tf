@@ -102,7 +102,7 @@ resource "local_file" "kubeconfig" {
       cluster_endpoint = var.cluster_endpoint
       ca_certificate   = var.cluster_ca_certificate
       cluster_name     = var.cluster_name
-      token            = var.cluster_token
+      region           = var.region
     }
   )
   filename = "${path.module}/${var.cluster_name}.kubeconfig.yaml"
