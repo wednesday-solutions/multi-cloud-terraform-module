@@ -159,4 +159,9 @@ resource "aws_security_group" "control_plane_sg" {
   tags = {
     Name = "${var.application_name}/ControlPlaneSecurityGroup"
   }
+
+  depends_on = [
+    aws_route.nat_private,
+    aws_route_table_association.public
+  ]
 }
