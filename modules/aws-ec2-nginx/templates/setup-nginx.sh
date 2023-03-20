@@ -41,6 +41,8 @@ http {
 
 EOL
 
+cp /etc/nginx/nginx.conf /etc/nginx/nginx.backup.conf
+
 cp -f nginx.conf /etc/nginx/nginx.conf
 
 sudo systemctl restart nginx
