@@ -12,7 +12,6 @@ resource "google_compute_subnetwork" "subnet" {
   ip_cidr_range = var.subnet_cidr_range
 }
 
-
 resource "google_container_cluster" "primary" {
   name     = var.application_name
   location = var.region

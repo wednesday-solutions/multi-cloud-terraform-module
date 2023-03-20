@@ -8,7 +8,7 @@ provider "google" {
 }
 
 module "gcp_gke" {
-  source = "../../modules/gcp-gke"
+  source = "../../modules/gcp-gke-autopilot"
 
   project_id       = var.project_id
   application_name = "gke-test-cluster"
