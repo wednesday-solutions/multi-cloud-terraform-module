@@ -1,5 +1,6 @@
 locals {
-  region = "ap-southeast-1"
+  region           = "ap-southeast-1"
+  application_name = "ws-test"
 }
 
 provider "aws" {
@@ -8,11 +9,10 @@ provider "aws" {
   region     = local.region
 }
 
-module "aws_eks" {
-  source = "../../modules/aws-eks"
+module "aws_eks_vpc" {
+  source = "../../modules/aws-eks-vpc"
 
-  application_name = "ws-test"
-  region           = local.region
+  application_name = local.application_name
 
   vpc_cidr_block = "192.168.0.0/16"
 
@@ -51,4 +51,16 @@ module "aws_eks" {
       cidr_block        = "192.168.160.0/19"
     }
   ]
+}
+
+module "aws_eks" {
+  source = "../../modules/aws-eks-fargate"
+
+  application_name = local.application_name
+  region           = local.region
+
+  vpc_id             = module.aws_eks_vpc.vpc_id
+  security_group_ids = [module.aws_eks_vpc.security_group_id]
+  private_subnet_ids = module.aws_eks_vpc.private_subnet_ids
+  public_subnet_ids  = module.aws_eks_vpc.public_subnet_ids
 }

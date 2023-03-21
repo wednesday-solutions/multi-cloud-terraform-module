@@ -72,7 +72,6 @@ terraform apply
 
 #### Resources
 
-- `aws_cloudformation` - Create EKS compliant VPC and Subnets
 - `aws_iam_role` - Create IAM role for EKS cluster and Fargate profile
 - `aws_iam_role_policy_attachment` - Attach policy to IAM role
 - `aws_eks_cluster` - Create EKS cluster
