@@ -1,23 +1,27 @@
 # AWS EKS Load Balancer Controller Add On
 
-This modules create AWS load balancer controller addon for existing EKS cluster
+This modules deploys AWS load balancer controller addon into an existing EKS cluster
 
-> This module can only used as child module of `aws-eks` module, since it inherits providers from it
+## Variables
 
-## Module structure
+- `application_name` - (Required) Application name
+- `region` - (Required) Region
+- `cluster_name` - (Required) EKS cluster name
 
-- **Variables**
+## Usage
 
-  - `application_name` - (Required) Application name
-  - `region` - (Required) Region
-  - `cluster_oidc_issuer` - (Required) Cluster OIDC issuer URL
-  - `cluster_name` - (Required) EKS cluster name
-  - `vpc_id` - (Required) EKS Cluster VPC ID
-  - `cluster_endpoint` - (Required) EKS cluster endpoint
-  - `cluster_ca_certificate` - (Required) EKS cluster CA ceritificate
-  - `cluster_token` - (Required) EKS cluster token
+```hcl
+module "aws_eks_lbc" {
+  source = "git@github.com:wednesday-solutions/multi-cloud-terraform-module/modules/aws-eks-lbc-addon"
 
-## Inherited providers
+  application_name = "ws-test"
+  region           = "ap-south-1"
+
+  cluster_name = "ws-test-cluster"
+}
+```
+
+## Providers
 
 - `terraform-provider-aws`
 - `terraform-provider-kubernetes`

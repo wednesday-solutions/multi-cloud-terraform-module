@@ -96,14 +96,14 @@ resource "aws_eks_fargate_profile" "fp_default" {
 
 # Connect to created EKS cluster
 
-data "aws_eks_cluster_auth" "cluster" {
-  name = aws_eks_cluster.cluster.name
-}
-
 provider "kubernetes" {
   host                   = aws_eks_cluster.cluster.endpoint
   cluster_ca_certificate = base64decode(aws_eks_cluster.cluster.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.cluster.token
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    args        = ["eks", "get-token", "--cluster-name", aws_eks_cluster.cluster.name]
+    command     = "aws"
+  }
 }
 
 # Update pod annotation of coredns deployment to enable fargate nodes
@@ -142,7 +142,11 @@ provider "helm" {
   kubernetes {
     host                   = aws_eks_cluster.cluster.endpoint
     cluster_ca_certificate = base64decode(aws_eks_cluster.cluster.certificate_authority[0].data)
-    token                  = data.aws_eks_cluster_auth.cluster.token
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      args        = ["eks", "get-token", "--cluster-name", aws_eks_cluster.cluster.name]
+      command     = "aws"
+    }
   }
 }
 
@@ -154,13 +158,7 @@ module "aws_load_balancer_controller" {
   application_name = var.application_name
   region           = var.region
 
-  cluster_endpoint       = aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = aws_eks_cluster.cluster.certificate_authority[0].data
-  cluster_token          = data.aws_eks_cluster_auth.cluster.token
-
-  cluster_name        = aws_eks_cluster.cluster.name
-  cluster_oidc_issuer = aws_eks_cluster.cluster.identity[0].oidc[0].issuer
-  vpc_id              = var.vpc_id
+  cluster_name = aws_eks_cluster.cluster.name
 
   depends_on = [
     aws_eks_addon.addons
