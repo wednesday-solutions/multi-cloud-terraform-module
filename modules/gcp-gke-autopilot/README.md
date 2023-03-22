@@ -14,15 +14,26 @@
   - `terraform`
   - `gcloud`
 
-## Module structure
-
-- **Variables**
+## Variables
 
   - `project_id` - (Required)(Sensitive) Google Project ID
   - `region` - (Required) Region
   - `application_name` - (Required) Application name
 
   For sensitive variables, please use `terraform.tfvars` file. You can see in [example](#example)
+
+## Usage
+```hcl
+module "gcp_gke_autopilot" {
+  source = "git@github.com:wednesday-solutions/multi-cloud-terraform-module/modules/gcp-gke-autopilot"
+
+  project_id       = var.project_id
+  application_name = "gke-test-cluster"
+  region           = local.region
+
+  subnet_cidr_range = "10.0.0.0/16"
+}
+```
 
 ## Example
 

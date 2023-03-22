@@ -7,31 +7,39 @@
 - [Example](#example)
 - [Providers](#providers)
 
-## Prerequisites
+## Variables
 
-- AWS account
-- CLI tools
-  - `terraform`
+- `application_name` - (Required) Application name
+- `region` - (Required) Region
+- `aws_access_key_id` - (Required)(Sensitive) AWS Access Key ID
+- `aws_access_secret_key` - (Required)(Sensitive) AWS Access Secret Key
+- `enable_aws_load_balancer_controller_addon` - (Optional) Enable AWS load balancer controller addon (default `true`)
 
-## Module structure
+For sensitive variables, please use `terraform.tfvars` file. You can see in [example](#example)
 
-- **Variables**
+## Outputs
 
-  - `application_name` - (Required) Application name
-  - `region` - (Required) Region
-  - `aws_access_key_id` - (Required)(Sensitive) AWS Access Key ID
-  - `aws_access_secret_key` - (Required)(Sensitive) AWS Access Secret Key
-  - `enable_aws_load_balancer_controller_addon` - (Optional) Enable AWS load balancer controller addon (default `true`)
+- `cluster_name` - EKS cluster name
+- `cluster_arn` - EKS cluster ARN
+- `cluster_endpoint` - EKS cluster endpoint
+- `cluster_region` - Region where EKS cluster is deployed
+- `vpc_id` - EKS Cluster VPC ID
 
-  For sensitive variables, please use `terraform.tfvars` file. You can see in [example](#example)
+## Usage
 
-- **Outputs**
+```hcl
+module "aws_eks" {
+  source = "git@github.com:wednesday-solutions/multi-cloud-terraform-module/modules/aws-eks-fargate"
 
-  - `cluster_name` - EKS cluster name
-  - `cluster_arn` - EKS cluster ARN
-  - `cluster_endpoint` - EKS cluster endpoint
-  - `cluster_region` - Region where EKS cluster is deployed
-  - `vpc_id` - EKS Cluster VPC ID
+  application_name = "ws-test"
+  region           = "asia-south-1"
+
+  vpc_id             = "vpc-xxxxxxxxx"
+  security_group_ids = ["sg-xxxxxxxxxx"]
+  private_subnet_ids = ["subnet-xxxxxxxxxx"]
+  public_subnet_ids  = ["subnet-xxxxxxxxxx"]
+}
+```
 
 ## Example
 
